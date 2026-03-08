@@ -4,6 +4,8 @@ import { errorHandler } from './middleware/errorHandler';
 import { createAuthRouter } from './routes/auth';
 import { createProjectRouter } from './routes/projects';
 import { pool } from './db/pool';
+import { createContentRouter } from './routes/content';
+import { createAiRouter } from './routes/ai';
 
 export const app = express();
 
@@ -27,6 +29,12 @@ app.use('/api/auth', createAuthRouter(pool));
 
 // Project routes
 app.use('/api/projects', createProjectRouter(pool));
+
+// Content routes
+app.use('/api/content', createContentRouter(pool));
+
+// AI routes
+app.use('/api/ai', createAiRouter(pool));
 
 // Error handling
 app.use(errorHandler);

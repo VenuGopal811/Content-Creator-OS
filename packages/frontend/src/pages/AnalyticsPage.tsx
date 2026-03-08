@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
-import { analyticsService } from '../services/mockService';
+import { analyticsService } from '../services/apiService';
 import { PerformanceMetrics } from '../services/mockData';
 import Layout from '../components/Layout';
 import WorkflowStepper from '../components/WorkflowStepper';

@@ -30,6 +30,7 @@ export const config = {
     provider: process.env.LLM_PROVIDER || 'openai',
     openaiApiKey: process.env.OPENAI_API_KEY,
     anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+    groqApiKey: process.env.GROQ_API_KEY,
     rateLimit: parseInt(process.env.LLM_RATE_LIMIT || '100', 10),
     rateWindow: parseInt(process.env.LLM_RATE_WINDOW || '60000', 10),
   },

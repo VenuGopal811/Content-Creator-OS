@@ -2,7 +2,7 @@
  * Auth Redux Slice
  */
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { authService } from '../services/mockService';
+import { authService } from '../services/apiService';
 import { User } from '../services/mockData';
 
 interface AuthState {

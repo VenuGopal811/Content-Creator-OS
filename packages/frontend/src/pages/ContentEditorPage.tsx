@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import { updateContent, getAiSuggestion, advanceStage, setActiveContent, clearAiResult } from '../store/contentSlice';
-import { contentService } from '../services/mockService';
+import { contentService } from '../services/apiService';
 import { toneProfiles } from '../services/mockData';
 import Layout from '../components/Layout';
 import WorkflowStepper from '../components/WorkflowStepper';

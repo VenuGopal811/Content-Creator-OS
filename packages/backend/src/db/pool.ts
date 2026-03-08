@@ -2,7 +2,7 @@ import { Pool } from 'pg';
 import { config } from '../config';
 
 export const pool = new Pool({
-  connectionString: config.database.url,
+  // connectionString: config.database.url, // Remove this to avoid conflicting with individual params
   host: config.database.host,
   port: config.database.port,
   database: config.database.name,

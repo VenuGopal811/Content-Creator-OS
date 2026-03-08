@@ -2,7 +2,7 @@
  * Content Redux Slice
  */
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { contentService, ideaService, aiService } from '../services/mockService';
+import { contentService, ideaService, aiService } from '../services/apiService';
 import { ContentPiece, Idea, Suggestion, EngagementScore, LifecycleStage } from '../services/mockData';
 
 interface ContentState {

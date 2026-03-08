@@ -2,7 +2,7 @@
  * Project Redux Slice
  */
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { projectService } from '../services/mockService';
+import { projectService } from '../services/apiService';
 import { Project } from '../services/mockData';
 
 interface ProjectState {
