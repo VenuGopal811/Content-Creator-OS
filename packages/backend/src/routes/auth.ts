@@ -14,7 +14,7 @@ import { Pool } from 'pg';
 // Validation schemas
 const registerSchema = z.object({
   email: z.string().email('Invalid email format'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string().min(4, 'Password must be at least 4 characters'),
   name: z.string().min(1, 'Name is required'),
   preferences: z.object({
     defaultTone: z.string().optional(),
@@ -34,7 +34,7 @@ const resetRequestSchema = z.object({
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Reset token is required'),
-  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+  newPassword: z.string().min(4, 'Password must be at least 4 characters'),
 });
 
 export function createAuthRouter(pool: Pool): Router {
