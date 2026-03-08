@@ -2,25 +2,27 @@
 
 ## Overview
 
-This implementation plan breaks down the ContentOS platform into discrete, incremental coding tasks. The approach follows the content lifecycle workflow, building core infrastructure first, then implementing each module in the order creators will use them. Each task builds on previous work, with checkpoints to ensure stability before proceeding.
+This implementation plan breaks down the ContentOS platform into discrete, incremental coding tasks. The approach follows the content lifecycle workflow (Idea → Create → Repurpose → Optimize → Publish → Analyze → Improve), building core infrastructure first, then implementing each module in the order creators will use them. Each task builds on previous work, with checkpoints to ensure stability before proceeding.
 
-The implementation uses TypeScript for both frontend (React) and backend (Node.js/Express), with PostgreSQL for relational data and Redis for caching.
+The implementation uses TypeScript for both frontend (React) and backend (Node.js/Express), with PostgreSQL for relational data, Pinecone/Weaviate for vector embeddings, and Redis for caching and session management.
 
 ## Tasks
 
-- [ ] 1. Set up project infrastructure and core services
+- [x] 1. Set up project infrastructure and core services
   - Initialize monorepo with frontend and backend workspaces
   - Configure TypeScript, ESLint, Prettier
   - Set up PostgreSQL database with migrations
-  - Set up Redis for caching
+  - Set up Redis for caching and session management
+  - Set up vector database (Pinecone or Weaviate) for embeddings
   - Configure environment variables and secrets management
-  - Create base API structure with Express
-  - Set up React application with routing
-  - Configure testing frameworks (Jest, fast-check)
+  - Create base API structure with Express and JWT middleware
+  - Set up React application with routing and Redux
+  - Configure testing frameworks (Jest for unit tests, fast-check for property tests)
+  - Set up LLM API client (OpenAI or Anthropic) with rate limiting
   - _Requirements: All (foundational)_
 
 - [ ] 2. Implement authentication system
-  - [ ] 2.1 Create User model and database schema
+  - [x] 2.1 Create User model and database schema
     - Define User interface with id, email, passwordHash, name, preferences
     - Create users table migration
     - Implement password hashing with bcrypt
@@ -28,15 +30,20 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
 
   - [ ]* 2.2 Write property test for user registration
     - **Property 1: User Registration Creates Valid Accounts**
+    - Test that any valid email/password creates account with all required fields
+    - Use fast-check to generate random valid credentials
+    - Verify id, email, passwordHash, name, createdAt, preferences are initialized
+    - Run with minimum 100 iterations
+    - Tag: Feature: content-os, Property 1
     - **Validates: Requirements 1.1**
 
-  - [ ] 2.3 Implement registration endpoint
+  - [x] 2.3 Implement registration endpoint
     - POST /api/auth/register with email validation
     - Hash passwords before storage
     - Return JWT token on successful registration
     - _Requirements: 1.1_
 
-  - [ ] 2.4 Implement login endpoint
+  - [x] 2.4 Implement login endpoint
     - POST /api/auth/login with credential validation
     - Compare hashed passwords
     - Generate and return JWT token
@@ -44,9 +51,14 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
 
   - [ ]* 2.5 Write property test for authentication correctness
     - **Property 2: Authentication Correctness**
+    - Test that authentication succeeds iff credentials match
+    - Generate random user accounts and test valid/invalid credential combinations
+    - Verify invalid credentials are always rejected with error message
+    - Run with minimum 100 iterations
+    - Tag: Feature: content-os, Property 2
     - **Validates: Requirements 1.2, 1.3**
 
-  - [ ] 2.6 Implement password reset flow
+  - [x] 2.6 Implement password reset flow
     - POST /api/auth/reset-request to generate reset token
     - Store reset token with expiration in database
     - POST /api/auth/reset-password to update password
@@ -54,9 +66,14 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
 
   - [ ]* 2.7 Write property test for password reset tokens
     - **Property 3: Password Reset Token Generation**
+    - Test that any registered user email generates unique secure reset token
+    - Verify token is stored and associated with user account
+    - Generate random user emails and verify token uniqueness
+    - Run with minimum 100 iterations
+    - Tag: Feature: content-os, Property 3
     - **Validates: Requirements 1.4**
 
-  - [ ] 2.8 Implement JWT middleware for protected routes
+  - [x] 2.8 Implement JWT middleware for protected routes
     - Verify JWT tokens on protected endpoints
     - Check token expiration
     - Attach user context to requests
@@ -64,21 +81,25 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
 
   - [ ]* 2.9 Write property test for session expiration
     - **Property 4: Session Expiration Enforcement**
+    - Test that any expired session token is rejected for protected operations
+    - Generate random expired tokens and verify all operations require re-auth
+    - Run with minimum 100 iterations
+    - Tag: Feature: content-os, Property 4
     - **Validates: Requirements 1.5**
 
-- [ ] 3. Checkpoint - Authentication complete
+- [x] 3. Checkpoint - Authentication complete
   - Ensure all authentication tests pass
   - Verify user registration, login, and password reset flows work end-to-end
   - Ask the user if questions arise
 
 - [ ] 4. Implement project management
-  - [ ] 4.1 Create Project model and database schema
+  - [x] 4.1 Create Project model and database schema
     - Define Project interface with id, userId, name, description, timestamps
     - Create projects table migration with foreign key to users
     - Add indexes for userId and updatedAt
     - _Requirements: 2.1_
 
-  - [ ] 4.2 Implement project CRUD endpoints
+  - [x] 4.2 Implement project CRUD endpoints
     - POST /api/projects to create new project
     - GET /api/projects to list user's projects (ordered by updatedAt DESC)
     - PUT /api/projects/:id to update project metadata
@@ -88,59 +109,89 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
 
   - [ ]* 4.3 Write property tests for project operations
     - **Property 5: Project Creation Completeness**
+    - Test that any valid name/description creates project with all required fields
     - **Property 6: Project Ordering by Modification Date**
+    - Test that project lists are always ordered by updatedAt DESC
     - **Property 7: Cascade Deletion of Projects**
+    - Test that deleting project removes all associated content
     - **Property 8: Project Archival Preserves Content**
+    - Test that archiving sets archived=true while preserving content
+    - Generate random projects and content for comprehensive testing
+    - Run each property with minimum 100 iterations
+    - Tag: Feature: content-os, Property 5/6/7/8
     - **Validates: Requirements 2.1, 2.2, 2.3, 2.5**
 
 - [ ] 5. Implement content data models and storage
-  - [ ] 5.1 Create Content model and database schema
+  - [x] 5.1 Create Content model and database schema
     - Define Content interface with all fields from design
     - Create content table migration with foreign keys
     - Add indexes for projectId, userId, stage
     - _Requirements: 2.1, 9.3_
 
-  - [ ] 5.2 Create Ideas table and model
+  - [x] 5.2 Create Ideas table and model
     - Define Idea interface
     - Create ideas table migration
     - _Requirements: 3.1_
 
-  - [ ] 5.3 Create Feedback and PerformanceMetrics tables
+  - [x] 5.3 Create Feedback and PerformanceMetrics tables
     - Define Feedback and PerformanceMetrics interfaces
     - Create migrations for both tables
     - _Requirements: 4.5, 8.2_
 
   - [ ]* 5.4 Write property test for data persistence
     - **Property 13: Data Persistence Round Trip**
+    - Test that any data modification is persisted and retrievable
+    - Generate random content, projects, feedback data
+    - Verify save then query returns modified values
+    - Test across all entity types (projects, content, feedback, metrics)
+    - Run with minimum 100 iterations
+    - Tag: Feature: content-os, Property 13
     - **Validates: Requirements 2.4, 4.5, 7.5, 8.2, 12.2**
 
 - [ ] 6. Implement AI Copilot service foundation
-  - [ ] 6.1 Set up LLM API client
+  - [x] 6.1 Set up LLM API client with circuit breaker
     - Configure OpenAI or Anthropic API client
-    - Implement rate limiting and retry logic
-    - Add circuit breaker for fault tolerance
-    - _Requirements: 11.5_
+    - Implement rate limiting and retry logic with exponential backoff
+    - Add circuit breaker pattern for fault tolerance (5 failures trigger open state)
+    - Implement graceful degradation when API is unavailable
+    - _Requirements: 11.5, 12.3_
 
-  - [ ] 6.2 Create prompt orchestration system
+  - [x] 6.2 Create prompt orchestration system
     - Implement PromptBuilder class for constructing prompts
-    - Create prompt templates for each operation type
+    - Create prompt templates for each operation type (ideas, refinement, repurposing, optimization)
     - Add context injection for user history and preferences
-    - _Requirements: 3.1, 4.2, 5.2_
+    - Implement system prompts for AI role and behavior
+    - _Requirements: 3.1, 4.2, 5.2, 10.1_
 
-  - [ ] 6.3 Implement Redis caching for prompts and responses
-    - Cache system prompts and user context
-    - Cache similar AI responses to reduce API calls
+  - [x] 6.3 Implement Redis caching for prompts and responses
+    - Cache system prompts and user context (1 hour TTL)
+    - Cache similar AI responses to reduce API calls (30 min TTL)
+    - Implement request hashing for cache key generation
     - Set appropriate TTLs for different cache types
     - _Requirements: API constraints_
 
-  - [ ]* 6.4 Write property test for error handling
+  - [ ] 6.4 Set up vector database for embeddings
+    - Configure Pinecone or Weaviate connection
+    - Implement embedding generation for content
+    - Create functions to store and query embeddings
+    - Add metadata filtering for user-specific queries
+    - _Requirements: 3.2, 8.4_
+
+  - [ ]* 6.5 Write property test for error handling
     - **Property 26: Error Handling with Retry**
+    - Test that failed AI operations return clear error messages
+    - Test that save operations retry up to 3 times before failure
+    - Mock API failures and verify retry behavior
+    - Run with minimum 100 iterations
+    - Tag: Feature: content-os, Property 26
     - **Validates: Requirements 11.5, 12.3**
 
 - [ ] 7. Checkpoint - Core infrastructure complete
   - Ensure all database models are created and tested
-  - Verify AI service can connect and make basic requests
-  - Ensure caching is working correctly
+  - Verify AI service can connect and make basic requests with retry logic
+  - Verify circuit breaker opens after 5 failures and resets after 1 minute
+  - Ensure caching is working correctly with proper TTLs
+  - Verify vector database can store and query embeddings
   - Ask the user if questions arise
 
 - [ ] 8. Implement idea generation module
@@ -159,8 +210,16 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
 
   - [ ]* 8.3 Write property tests for idea generation
     - **Property 9: Idea Generation Count and Relevance**
+    - Test that any request generates at least 5 ideas
+    - Test that ideas with topic context relate to that topic
     - **Property 10: Idea Selection Creates Content**
+    - Test that selecting any idea creates content with stage='idea'
     - **Property 11: AI Explainability for All Suggestions**
+    - Test that all AI suggestions include non-empty explanation field
+    - Mock LLM responses for deterministic testing
+    - Generate random topics and contexts
+    - Run each property with minimum 100 iterations
+    - Tag: Feature: content-os, Property 9/10/11
     - **Validates: Requirements 3.1, 3.2, 3.3, 3.4**
 
 - [ ] 9. Implement content creation studio
@@ -185,14 +244,23 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
     - _Requirements: 4.2, 4.3_
 
   - [ ] 9.4 Implement tone control
-    - Create ToneProfile definitions for 5 presets
+    - Create ToneProfile definitions for 5 presets (professional, conversational, educational, inspirational, technical)
+    - Define system prompts, vocabulary, and sentence structure for each tone
     - Add tone parameter to suggestion prompts
-    - Validate tone consistency in responses
+    - Implement tone consistency validation in responses
     - _Requirements: 4.4_
 
   - [ ]* 9.5 Write property tests for content operations
     - **Property 12: Tone Consistency in AI Operations**
+    - Test that any content operation with specified tone matches that tone profile
+    - Use tone consistency scoring to verify output
     - **Property 27: State Restoration Round Trip**
+    - Test that saving and reloading project restores exact state
+    - Verify all content, metadata, and relationships preserved
+    - Mock LLM responses for deterministic tone testing
+    - Generate random content with different tones
+    - Run each property with minimum 100 iterations
+    - Tag: Feature: content-os, Property 12/27
     - **Validates: Requirements 4.2, 4.4, 12.5**
 
 - [ ] 10. Implement repurposing engine
@@ -216,6 +284,12 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
 
   - [ ]* 10.4 Write property tests for repurposing
     - **Property 14: Repurposing Platform Constraints**
+    - Test that any repurposed content satisfies platform constraints (maxLength, structure)
+    - Test that sourceContentId link is maintained
+    - Generate random content and target formats
+    - Verify length limits, structure requirements for each platform
+    - Run with minimum 100 iterations
+    - Tag: Feature: content-os, Property 14
     - **Validates: Requirements 5.2, 5.3, 5.5**
 
 - [ ] 11. Checkpoint - Content creation workflow complete
@@ -226,28 +300,29 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
 
 - [ ] 12. Implement optimization layer
   - [ ] 12.1 Create scoring algorithms
-    - Implement calculateClarityScore function
-    - Implement calculateStructureScore function
-    - Implement calculateReadabilityScore (Flesch)
-    - Implement calculatePlatformFitScore function
+    - Implement calculateClarityScore function (sentence complexity, jargon, coherence)
+    - Implement calculateStructureScore function (intro, conclusion, paragraph length, headings)
+    - Implement calculateReadabilityScore using Flesch reading ease formula
+    - Implement calculatePlatformFitScore function (length, structure, conventions)
     - _Requirements: 6.1, 6.4_
 
   - [ ] 12.2 Implement tone consistency scoring
     - Create calculateToneConsistencyScore with LLM evaluation
-    - Cache tone evaluations to reduce API calls
+    - Build prompt to evaluate tone alignment with target profile
+    - Cache tone evaluations to reduce API calls (30 min TTL)
     - _Requirements: 6.4_
 
   - [ ] 12.3 Create overall engagement score calculator
-    - Combine all component scores with weights
-    - Return score breakdown with all components
-    - Ensure score is always 0-100
+    - Combine all component scores with weights (clarity 25%, structure 20%, tone 20%, platform 20%, readability 15%)
+    - Return score breakdown with all five components
+    - Ensure overall score is always 0-100
     - _Requirements: 6.1, 6.4_
 
   - [ ] 12.4 Implement suggestion generator
-    - Analyze score breakdown to identify weak areas
-    - Generate specific, actionable suggestions
+    - Analyze score breakdown to identify weak areas (components < 60)
+    - Generate specific, actionable suggestions for each weak area
     - Provide explanations for each suggestion
-    - Rank suggestions by impact
+    - Rank suggestions by impact (high/medium/low based on score delta)
     - _Requirements: 6.2, 6.5_
 
   - [ ] 12.5 Create optimization API endpoints
@@ -258,8 +333,14 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
 
   - [ ]* 12.6 Write property tests for optimization
     - **Property 15: Engagement Score Bounds and Breakdown**
+    - Test that any content analysis produces score 0-100 with all five components
     - **Property 16: Optimization Suggestions Are Actionable**
+    - Test that any optimization provides at least one specific suggestion with description and explanation
     - **Property 17: Score Recalculation After Optimization**
+    - Test that applying any suggestion triggers score recalculation with new value
+    - Generate random content with varying quality
+    - Run each property with minimum 100 iterations
+    - Tag: Feature: content-os, Property 15/16/17
     - **Validates: Requirements 6.1, 6.2, 6.3, 6.4**
 
 - [ ] 13. Implement publishing interface
@@ -281,8 +362,14 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
 
   - [ ]* 13.4 Write property tests for publishing
     - **Property 18: Publishing State Transition**
+    - Test that marking any content as ready to publish updates stage to 'publish' and sets publishedAt
     - **Property 19: Export Format Correctness**
+    - Test that any export request returns content in specified format with appropriate MIME type
     - **Property 20: Publishing Preserves Data**
+    - Test that publishing any content preserves title, body, metadata (only stage and publishedAt change)
+    - Generate random content and export formats
+    - Run each property with minimum 100 iterations
+    - Tag: Feature: content-os, Property 18/19/20
     - **Validates: Requirements 7.1, 7.2, 7.3, 7.5**
 
 - [ ] 14. Implement analytics and feedback loop
@@ -305,7 +392,12 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
 
   - [ ]* 14.4 Write property tests for analytics
     - **Property 21: Analytics Data Association**
+    - Test that any performance feedback is stored with correct contentId association
     - **Property 22: Analytics Retrieval for Published Content**
+    - Test that viewing analytics for any published content returns all recorded metrics
+    - Generate random performance data and content
+    - Run each property with minimum 100 iterations
+    - Tag: Feature: content-os, Property 21/22
     - **Validates: Requirements 8.1, 8.2**
 
 - [ ] 15. Implement workflow orchestrator
@@ -327,8 +419,15 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
 
   - [ ]* 15.4 Write property tests for workflow
     - **Property 23: Workflow Stage Tracking**
+    - Test that any content accurately tracks current stage as valid LifecycleStage value
     - **Property 24: Workflow Stage Transitions Preserve Content**
+    - Test that advancing any content between stages preserves title, body, metadata (only stage changes)
     - **Property 25: Next Stage Suggestion Correctness**
+    - Test that any content at given stage suggests valid next stage following workflow progression
+    - Generate random content at different stages
+    - Verify workflow progression: idea → draft → refine → optimize → repurpose → publish → analyze
+    - Run each property with minimum 100 iterations
+    - Tag: Feature: content-os, Property 23/24/25
     - **Validates: Requirements 9.2, 9.3, 9.4**
 
 - [ ] 16. Checkpoint - Backend complete
@@ -518,6 +617,11 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
 
   - [ ]* 27.2 Write property test for error messages
     - **Property 28: Helpful Error Messages**
+    - Test that any error condition provides non-empty, descriptive error message
+    - Generate various error scenarios (validation, operation failures)
+    - Verify error messages help users understand what went wrong
+    - Run with minimum 100 iterations
+    - Tag: Feature: content-os, Property 28
     - **Validates: Requirements 13.4**
 
   - [ ] 27.3 Add loading states and skeletons
@@ -540,25 +644,29 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
 
 - [ ] 28. Testing and quality assurance
   - [ ]* 28.1 Run all property-based tests
-    - Execute all property tests with 100 iterations
-    - Verify all properties pass
-    - Fix any failures discovered
+    - Execute all 28 property tests with 100 iterations each
+    - Verify all properties pass consistently
+    - Fix any failures discovered through property testing
+    - Document any edge cases found
 
   - [ ]* 28.2 Run integration tests
-    - Test all API endpoints
-    - Test database transactions
-    - Test authentication flows
+    - Test all API endpoints with valid and invalid inputs
+    - Test database transactions and rollbacks
+    - Test authentication and authorization flows
+    - Verify error responses follow consistent format
 
   - [ ]* 28.3 Run end-to-end tests
-    - Test complete user workflows
-    - Test error scenarios
-    - Test edge cases
+    - Test complete user workflows (registration → project → content → publishing)
+    - Test error scenarios and recovery paths
+    - Test edge cases (empty content, max length, special characters)
+    - Verify UI displays errors and loading states correctly
 
   - [ ] 28.4 Performance testing
-    - Test with large content pieces
-    - Test with many projects/content items
-    - Verify response times meet requirements
-    - _Requirements: 11.3, 11.4_
+    - Test with large content pieces (10,000+ words)
+    - Test with many projects/content items (100+ per user)
+    - Verify response times meet requirements (UI < 100ms, save < 500ms, load < 1s)
+    - Test LLM API rate limiting and circuit breaker behavior
+    - _Requirements: 11.1, 11.2, 11.3, 11.4_
 
 - [ ] 29. Deployment preparation
   - [ ] 29.1 Set up production environment
@@ -589,7 +697,10 @@ The implementation uses TypeScript for both frontend (React) and backend (Node.j
 - Tasks marked with `*` are optional and can be skipped for faster MVP delivery
 - Each task references specific requirements for traceability
 - Checkpoints ensure incremental validation and provide opportunities for user feedback
-- Property tests validate universal correctness properties from the design document
-- The implementation follows the content lifecycle workflow to ensure a cohesive user experience
-- AI operations use mocked responses in tests for deterministic behavior
-- All property tests run with minimum 100 iterations as specified in the testing strategy
+- Property tests validate universal correctness properties from the design document (28 total properties)
+- Each property test runs with minimum 100 iterations as specified in the testing strategy
+- The implementation follows the content lifecycle workflow (Idea → Create → Repurpose → Optimize → Publish → Analyze → Improve) to ensure a cohesive user experience
+- AI operations use mocked LLM responses in tests for deterministic behavior
+- All property tests are tagged with format: "Feature: content-os, Property {number}"
+- Circuit breaker pattern protects against LLM API failures (opens after 5 failures, resets after 1 minute)
+- Caching strategy reduces API costs: system prompts (1 hour TTL), responses (30 min TTL), tone evaluations (30 min TTL)
